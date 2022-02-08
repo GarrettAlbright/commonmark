@@ -20,6 +20,7 @@ use League\CommonMark\EnvironmentAwareInterface;
 use League\CommonMark\EnvironmentInterface;
 use League\CommonMark\Extension\Mention\Mention;
 use League\CommonMark\Inline\AdjacentTextMerger;
+use League\CommonMark\Inline\Element\AbstractStringContainer;
 use League\CommonMark\Inline\Element\AbstractWebResource;
 use League\CommonMark\Inline\Element\Image;
 use League\CommonMark\Inline\Element\Link;
@@ -83,9 +84,33 @@ final class CloseBracketParser implements InlineParserInterface, EnvironmentAwar
             if ($label instanceof Mention) {
                 $label->replaceWith($replacement = new Text($label->getSymbol() . $label->getIdentifier()));
                 $label = $replacement;
-            }
+            } elseif ($isImage) {
+                // Per CommonMark spec, labels (alt text) for images have
+                // inline elements as its contents, but of course it will only
+                // display as plain text per certain rules.
+                if ($label instanceof Link && $label->firstChild() instanceof AbstractStringContainer) {
+                    AdjacentTextMerger::mergeChildNodes($label->firstChild());
+                    $inline->data['label'] .= $label->firstChild()->getContent();
+                } elseif ($label instanceof Image) {
+                    $inline->data['label'] .= $label->data['label'] ?? '';
+                }
+                elseif ($label instanceof AbstractStringContainer) {
+                    // AdjacentTextMerger::mergeChildNodes($label);
+                    $literal = $label->getContent();
 
-            $inline->appendChild($label);
+                    // Special handling for [ as "link syntax" is valid here.
+                    // In particular see CommonMark example 519:
+                    // input: ![[[foo](uri1)](uri2)](uri3)
+                    // output: <p><img src="uri3" alt="[foo](uri2)" /></p>
+                    if (! $label->getData('delim', false) || $literal === '[') {
+                        $inline->data['label'] .= $literal;
+                    }
+                }
+
+                $label->detach();
+            } else {
+                $inline->appendChild($label);
+            }
         }
 
         // Process delimiters such as emphasis inside link/image
@@ -206,7 +231,7 @@ final class CloseBracketParser implements InlineParserInterface, EnvironmentAwar
     private function createInline(string $url, string $title, bool $isImage): AbstractWebResource
     {
         if ($isImage) {
-            return new Image($url, null, $title);
+            return new Image($url, '', $title);
         }
 
         return new Link($url, null, $title);

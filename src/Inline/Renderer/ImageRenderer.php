@@ -50,9 +50,7 @@ final class ImageRenderer implements InlineRendererInterface, ConfigurationAware
             $attrs['src'] = $inline->getUrl();
         }
 
-        $alt = $htmlRenderer->renderInlines($inline->children());
-        $alt = \preg_replace('/\<[^>]*alt="([^"]*)"[^>]*\>/', '$1', $alt);
-        $attrs['alt'] = \preg_replace('/\<[^>]*\>/', '', $alt);
+        $attrs['alt'] = $inline->data['label'];
 
         if (isset($inline->data['title'])) {
             $attrs['title'] = $inline->data['title'];
