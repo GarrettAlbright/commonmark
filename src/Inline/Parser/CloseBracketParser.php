@@ -29,6 +29,7 @@ use League\CommonMark\InlineParserContext;
 use League\CommonMark\Reference\ReferenceInterface;
 use League\CommonMark\Reference\ReferenceMapInterface;
 use League\CommonMark\Util\LinkParserHelper;
+use League\CommonMark\Extension\SmartPunct\Quote;
 use League\CommonMark\Util\RegexHelper;
 
 final class CloseBracketParser implements InlineParserInterface, EnvironmentAwareInterface
@@ -102,7 +103,10 @@ final class CloseBracketParser implements InlineParserInterface, EnvironmentAwar
                     // In particular see CommonMark example 519:
                     // input: ![[[foo](uri1)](uri2)](uri3)
                     // output: <p><img src="uri3" alt="[foo](uri2)" /></p>
-                    if (! $label->getData('delim', false) || $literal === '[') {
+                    if (! $label->getData('delim', false)
+                        || $literal === '['
+                        || $label instanceof Quote
+                    ) {
                         $inline->data['label'] .= $literal;
                     }
                 }
